@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebQuest: O Mistério do Troféu Desaparecido</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Biblioteca QRCode.js para gerar QR Code na tela -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        noir: {
+                            950: '#09090b',
+                            900: '#121216',
+                            800: '#1c1c24',
+                            700: '#272732',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #09090b;
+            color: #f4f4f5;
+            background-image: radial-gradient(circle at 50% 0%, #1e1b2e 0%, #09090b 70%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(28, 28, 36, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .stamp {
+            transform: rotate(-4deg);
+            border: 2px solid #ef4444;
+            color: #ef4444;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.25); }
+            50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.55); }
+        }
+        .glow-gold {
+            animation: pulse-glow 3s infinite;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-amber-500 selection:text-black pb-16">
+
+    <!-- Barra Superior (HUD do Jogo) -->
+    <header class="sticky top-0 z-40 glass-card border-b border-zinc-800 px-4 py-3">
+        <div class="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                </div>
+                <div>
+                    <span class="text-[11px] font-mono uppercase tracking-widest text-amber-400 block">Clube de Investigação</span>
+                    <h1 class="font-bold text-sm sm:text-base text-white leading-tight">Caso #01: O Troféu de Ouro</h1>
+                </div>
+            </div>
+
+            <!-- Status: Pontuação, Tempo e Botão QR Code -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <div class="bg-zinc-900/90 border border-zinc-800 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-clock text-amber-400 text-xs"></i>
+                    <span id="timer-display" class="font-mono text-xs sm:text-sm font-bold text-zinc-200">00:00</span>
+                </div>
+                <div class="bg-zinc-900/90 border border-zinc-800 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-star text-amber-400 text-xs"></i>
+                    <span id="score-display" class="font-mono text-xs sm:text-sm font-bold text-amber-400">1000 pts</span>
+                </div>
+                <button onclick="openQrModal()" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs sm:text-sm px-3 py-2 rounded-xl transition flex items-center gap-2 shadow-lg shadow-amber-500/20" title="Gerar QR Code para compartilhar ou abrir no celular">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span class="hidden sm:inline">QR Code</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Barra de Progresso das Etapas da WebQuest -->
+        <div class="max-w-4xl mx-auto mt-3">
+            <div class="grid grid-cols-5 gap-1.5 text-center text-[10px] sm:text-xs font-mono">
+                <div id="step-pill-1" class="py-1 rounded-lg bg-amber-500 text-zinc-950 font-bold transition-all">1. Introdução</div>
+                <div id="step-pill-2" class="py-1 rounded-lg bg-zinc-800 text-zinc-400 transition-all">2. Suspeitos</div>
+                <div id="step-pill-3" class="py-1 rounded-lg bg-zinc-800 text-zinc-400 transition-all">3. Pistas</div>
+                <div id="step-pill-4" class="py-1 rounded-lg bg-zinc-800 text-zinc-400 transition-all">4. Veredito</div>
+                <div id="step-pill-5" class="py-1 rounded-lg bg-zinc-800 text-zinc-400 transition-all">5. Conclusão</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notificação Flutuante (Substitui alert()) -->
+    <div id="toast-box" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden max-w-md w-[90%]">
+        <div id="toast-content" class="px-4 py-3 rounded-2xl shadow-2xl border text-sm font-medium flex items-center gap-3"></div>
+    </div>
+
+    <!-- Container Principal -->
+    <main class="max-w-4xl mx-auto px-4 mt-6">
+
+        <!-- ========================================== -->
+        <!-- ETAPA 1: INTRODUÇÃO                        -->
+        <!-- ========================================== -->
+        <section id="stage-1" class="space-y-6 animate-fadeIn">
+            <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+                <!-- Ilustração SVG Temática da Cena do Crime -->
+                <div class="relative bg-gradient-to-b from-zinc-900 via-indigo-950/40 to-zinc-950 p-6 sm:p-10 border-b border-zinc-800 flex flex-col items-center justify-center text-center">
+                    <span class="stamp px-3 py-1 rounded text-xs font-bold mb-4">Arquivo Confidencial • Dossiê #01</span>
+                    
+                    <!-- Ilustração SVG Pedestal Vazio sob Holofote -->
+                    <svg class="w-48 h-40 sm:w-56 sm:h-44 mb-4 drop-shadow-2xl" viewBox="0 0 240 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Holofote -->
+                        <polygon points="120,10 55,165 185,165" fill="url(#spotlight)" opacity="0.45"/>
+                        <path d="M105 8 H135 L142 20 H98 L105 8Z" fill="#3f3f46"/>
+                        <!-- Pedestal -->
+                        <rect x="85" y="105" width="70" height="60" rx="4" fill="#27272a" stroke="#52525b" stroke-width="2"/>
+                        <rect x="78" y="98" width="84" height="10" rx="3" fill="#3f3f46"/>
+                        <rect x="75" y="160" width="90" height="10" rx="3" fill="#18181b"/>
+                        <!-- Silhueta pontilhada do Troféu Desaparecido -->
+                        <path d="M105 52 H135 V66 C135 76 128 82 120 82 C112 82 105 76 105 66 V52 Z" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 4"/>
+                        <path d="M120 82 V92 M110 92 H130" stroke="#fbbf24" stroke-width="2" stroke-dasharray="3 3"/>
+                        <circle cx="120" cy="66" r="24" stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1.5"/>
+                        <defs>
+                            <linearGradient id="spotlight" x1="120" y1="10" x2="120" y2="165" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#fbbf24" stop-opacity="0.7"/>
+                                <stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">O Mistério do Troféu Desaparecido</h2>
+                    <p class="text-zinc-400 text-sm sm:text-base max-w-xl mt-2">
+                        Hoje, entre <strong class="text-amber-400">14h00 e 15h00</strong>, o Troféu de Ouro do campeonato sumiu do pedestal da diretoria. Não há sinais de arrombamento e apenas 3 pessoas tinham a chave reserva.
+                    </p>
+                </div>
+
+                <div class="p-6 sm:p-8 space-y-5">
+                    <div class="grid sm:grid-cols-3 gap-4">
+                        <div class="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl">
+                            <div class="text-amber-400 font-bold text-sm mb-1"><i class="fa-solid fa-bullseye mr-2"></i>Sua Missão</div>
+                            <p class="text-xs text-zinc-400 leading-relaxed">Interrogar os 3 suspeitos, analisar as provas digitais e descobrir quem mentiu.</p>
+                        </div>
+                        <div class="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl">
+                            <div class="text-amber-400 font-bold text-sm mb-1"><i class="fa-solid fa-key mr-2"></i>O Enigma</div>
+                            <p class="text-xs text-zinc-400 leading-relaxed">Decifrar o bilhete numérico deixado na sala e descobrir a senha do armário.</p>
+                        </div>
+                        <div class="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl">
+                            <div class="text-amber-400 font-bold text-sm mb-1"><i class="fa-solid fa-trophy mr-2"></i>Pontuação</div>
+                            <p class="text-xs text-zinc-400 leading-relaxed">Cada erro desconta 100 pontos. Resolva rápido e com precisão máxima!</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-zinc-800/80">
+                        <div class="w-full sm:w-auto flex-1">
+                            <label class="block text-xs font-mono text-zinc-400 mb-1">NOME DO DETETIVE OU EQUIPE:</label>
+                            <input id="team-name-input" type="text" placeholder="Ex: Detetives do Clube" class="w-full bg-zinc-900 border border-zinc-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-white outline-none transition">
+                        </div>
+                        <button onclick="startMission()" class="w-full sm:w-auto mt-2 sm:mt-5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-extrabold px-6 py-3 rounded-xl transition flex items-center justify-center gap-2 glow-gold">
+                            <span>Iniciar Investigação</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- ETAPA 2: TAREFA E PROCESSO (SUSPEITOS)     -->
+        <!-- ========================================== -->
+        <section id="stage-2" class="hidden space-y-6">
+            <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-4">
+                    <div>
+                        <span class="text-xs font-mono text-amber-400 uppercase">Etapa 2 • Tarefa e Processo</span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white">Depoimentos dos Suspeitos</h2>
+                    </div>
+                    <span class="text-xs bg-zinc-800 text-zinc-300 px-3 py-1.5 rounded-xl font-mono">Janela do crime: 14h00 - 15h00</span>
+                </div>
+
+                <p class="text-sm text-zinc-300">
+                    Clique em cada suspeito para ler o álibi completo. Apenas <strong class="text-amber-400">um deles está mentindo</strong> sobre onde estava no horário do sumiço.
+                </p>
+
+                <!-- Cards dos 3 Suspeitos -->
+                <div class="grid md:grid-cols-3 gap-4">
+                    <!-- Suspeita 1: Camila -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/50 rounded-2xl p-5 flex flex-col justify-between transition">
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-xl font-bold">
+                                    <i class="fa-solid fa-basketball"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-white text-base">Camila</h3>
+                                    <span class="text-xs text-rose-400 font-mono">Capitã do Time</span>
+                                </div>
+                            </div>
+                            <div class="bg-zinc-950/70 p-3.5 rounded-xl border border-zinc-800/80 text-xs sm:text-sm text-zinc-300 italic leading-relaxed">
+                                "Fiquei treinando sozinha na <strong class="text-white">quadra coberta das 13h50 até as 14h45</strong>. Nem passei perto da diretoria."
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-zinc-800/70 flex items-center justify-between text-xs text-zinc-500 font-mono">
+                            <span>Chave Reserva #01</span>
+                            <span>Álibi: Quadra</span>
+                        </div>
+                    </div>
+
+                    <!-- Suspeito 2: Bruno -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/50 rounded-2xl p-5 flex flex-col justify-between transition">
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 text-xl font-bold">
+                                    <i class="fa-solid fa-broom"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-white text-base">Bruno</h3>
+                                    <span class="text-xs text-sky-400 font-mono">Zelador</span>
+                                </div>
+                            </div>
+                            <div class="bg-zinc-950/70 p-3.5 rounded-xl border border-zinc-800/80 text-xs sm:text-sm text-zinc-300 italic leading-relaxed">
+                                "Passei limpando o <strong class="text-white">corredor da diretoria às 14h10</strong> e a porta da sala ainda estava trancada por fora."
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-zinc-800/70 flex items-center justify-between text-xs text-zinc-500 font-mono">
+                            <span>Chave Reserva #02</span>
+                            <span>Álibi: Corredor</span>
+                        </div>
+                    </div>
+
+                    <!-- Suspeito 3: Diego -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/50 rounded-2xl p-5 flex flex-col justify-between transition">
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-bold">
+                                    <i class="fa-solid fa-camera"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-white text-base">Diego</h3>
+                                    <span class="text-xs text-emerald-400 font-mono">Fotógrafo</span>
+                                </div>
+                            </div>
+                            <div class="bg-zinc-950/70 p-3.5 rounded-xl border border-zinc-800/80 text-xs sm:text-sm text-zinc-300 italic leading-relaxed">
+                                "Estava na <strong class="text-white">sala de informática</strong> editando as fotos do torneio das <strong class="text-white">14h00 às 15h00</strong>."
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-zinc-800/70 flex items-center justify-between text-xs text-zinc-500 font-mono">
+                            <span>Chave Reserva #03</span>
+                            <span>Álibi: Informática</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-zinc-800">
+                    <button onclick="goToStage(1)" class="text-zinc-400 hover:text-white text-sm px-4 py-2 rounded-xl transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Voltar
+                    </button>
+                    <button onclick="goToStage(3)" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold px-6 py-3 rounded-xl transition flex items-center gap-2">
+                        <span>Analisar Pistas da Perícia</span>
+                        <i class="fa-solid fa-microscope"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- ETAPA 3: RECURSOS E PISTAS DA PERÍCIA      -->
+        <!-- ========================================== -->
+        <section id="stage-3" class="hidden space-y-6">
+            <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div class="border-b border-zinc-800 pb-4">
+                    <span class="text-xs font-mono text-amber-400 uppercase">Etapa 3 • Recursos Investigativos</span>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">Relatório Técnico & Bilhete Codificado</h2>
+                </div>
+
+                <!-- 3 Evidências -->
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-zinc-900/90 border border-zinc-800 p-5 rounded-2xl space-y-2">
+                        <div class="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                            <i class="fa-solid fa-ban"></i>
+                            <span>Evidência #1: Registro de Manutenção</span>
+                        </div>
+                        <p class="text-sm text-zinc-300 leading-relaxed">
+                            O livro da portaria confirma que a <strong class="text-rose-400">quadra coberta ficou interditada e trancada para pintura das 13h30 às 15h00</strong>. Ninguém pôde entrar lá nesse período.
+                        </p>
+                    </div>
+
+                    <div class="bg-zinc-900/90 border border-zinc-800 p-5 rounded-2xl space-y-2">
+                        <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                            <i class="fa-solid fa-server"></i>
+                            <span>Evidência #2: Logs de Rede</span>
+                        </div>
+                        <p class="text-sm text-zinc-300 leading-relaxed">
+                            O servidor da sala de informática registra que o login de <strong class="text-emerald-400">Diego permaneceu ativo sem pausas das 14h02 às 14h58</strong> editando arquivos pesados.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Enigma Interativo do Bilhete -->
+                <div class="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-amber-500/30 p-5 sm:p-6 rounded-2xl space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 text-amber-400 font-bold">
+                            <i class="fa-solid fa-note-sticky"></i>
+                            <span>Evidência #3: Bilhete Encontrado Sob o Pedestal</span>
+                        </div>
+                        <span class="text-xs font-mono bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg">Cifra Numérica (-3)</span>
+                    </div>
+
+                    <div class="bg-amber-100 text-zinc-900 font-mono font-bold text-center py-4 px-3 rounded-xl text-xl sm:text-2xl tracking-widest shadow-inner">
+                        11 &nbsp;-&nbsp; 14 &nbsp;-&nbsp; 16 &nbsp;-&nbsp; 12 &nbsp;-&nbsp; 4
+                    </div>
+
+                    <p class="text-xs sm:text-sm text-zinc-400">
+                        <strong class="text-zinc-200">Regra de decodificação:</strong> Subtraia <strong class="text-amber-400">3</strong> de cada número e converta o resultado na letra correspondente do alfabeto (<code class="text-amber-300">1=A, 2=B, 3=C, 4=D, 5=E, 6=F, 7=G, 8=H, 9=I, 10=J, 11=K, 12=L, 13=M...</code>).
+                    </p>
+
+                    <!-- Ferramenta Auxiliar Interativa para Decodificar -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl">
+                        <span class="text-xs font-mono text-zinc-400 block mb-2">BANCADA DE DECODIFICAÇÃO (TESTE OS NÚMEROS):</span>
+                        <div class="grid grid-cols-5 gap-2 text-center">
+                            <div>
+                                <div class="text-xs font-mono text-zinc-500 mb-1">11 - 3 = 8</div>
+                                <input id="dec-1" maxlength="1" oninput="updateDecodedPreview()" placeholder="?" class="w-full text-center uppercase font-mono font-bold bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg py-2 text-amber-400 outline-none">
+                            </div>
+                            <div>
+                                <div class="text-xs font-mono text-zinc-500 mb-1">14 - 3 = 11</div>
+                                <input id="dec-2" maxlength="1" oninput="updateDecodedPreview()" placeholder="?" class="w-full text-center uppercase font-mono font-bold bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg py-2 text-amber-400 outline-none">
+                            </div>
+                            <div>
+                                <div class="text-xs font-mono text-zinc-500 mb-1">16 - 3 = 13</div>
+                                <input id="dec-3" maxlength="1" oninput="updateDecodedPreview()" placeholder="?" class="w-full text-center uppercase font-mono font-bold bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg py-2 text-amber-400 outline-none">
+                            </div>
+                            <div>
+                                <div class="text-xs font-mono text-zinc-500 mb-1">12 - 3 = 9</div>
+                                <input id="dec-4" maxlength="1" oninput="updateDecodedPreview()" placeholder="?" class="w-full text-center uppercase font-mono font-bold bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg py-2 text-amber-400 outline-none">
+                            </div>
+                            <div>
+                                <div class="text-xs font-mono text-zinc-500 mb-1">4 - 3 = 1</div>
+                                <input id="dec-5" maxlength="1" oninput="updateDecodedPreview()" placeholder="?" class="w-full text-center uppercase font-mono font-bold bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-lg py-2 text-amber-400 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-zinc-800">
+                    <button onclick="goToStage(2)" class="text-zinc-400 hover:text-white text-sm px-4 py-2 rounded-xl transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Rever Suspeitos
+                    </button>
+                    <button onclick="goToStage(4)" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold px-6 py-3 rounded-xl transition flex items-center gap-2">
+                        <span>Ir para o Veredito Final</span>
+                        <i class="fa-solid fa-gavel"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- ETAPA 4: AVALIAÇÃO E VEREDITO FINAL        -->
+        <!-- ========================================== -->
+        <section id="stage-4" class="hidden space-y-6">
+            <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div class="border-b border-zinc-800 pb-4">
+                    <span class="text-xs font-mono text-amber-400 uppercase">Etapa 4 • Avaliação Final</span>
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">Relatório de Encerramento do Caso</h2>
+                    <p class="text-sm text-zinc-400 mt-1">Preencha as 3 conclusões da equipe para destrancar o armário e recuperar o Troféu de Ouro.</p>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- Pergunta 1 -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 p-5 rounded-2xl space-y-3">
+                        <label class="block font-bold text-white text-sm sm:text-base">
+                            1. Quem mentiu no depoimento e pegou o Troféu de Ouro?
+                        </label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <button type="button" onclick="selectSuspect('Camila')" id="btn-suspect-Camila" class="suspect-choice py-3 px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-sm font-bold text-zinc-300 hover:border-amber-500 transition">
+                                Camila
+                            </button>
+                            <button type="button" onclick="selectSuspect('Bruno')" id="btn-suspect-Bruno" class="suspect-choice py-3 px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-sm font-bold text-zinc-300 hover:border-amber-500 transition">
+                                Bruno
+                            </button>
+                            <button type="button" onclick="selectSuspect('Diego')" id="btn-suspect-Diego" class="suspect-choice py-3 px-3 rounded-xl border border-zinc-700 bg-zinc-950 text-sm font-bold text-zinc-300 hover:border-amber-500 transition">
+                                Diego
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pergunta 2 -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 p-5 rounded-2xl space-y-3">
+                        <label for="answer-code" class="block font-bold text-white text-sm sm:text-base">
+                            2. Qual é o código de 5 letras decifrado do bilhete (<span class="font-mono text-amber-400">11-14-16-12-4</span>)?
+                        </label>
+                        <input id="answer-code" type="text" maxlength="9" placeholder="Digite as 5 letras (ex: HKMIA)" class="w-full bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-xl px-4 py-3 font-mono uppercase tracking-widest text-white outline-none transition">
+                    </div>
+
+                    <!-- Pergunta 3 -->
+                    <div class="bg-zinc-900/90 border border-zinc-800 p-5 rounded-2xl space-y-3">
+                        <label for="answer-pin" class="block font-bold text-white text-sm sm:text-base">
+                            3. Qual é a senha de 3 dígitos do cadeado do armário?
+                        </label>
+                        <p class="text-xs text-zinc-400">
+                            <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>
+                            <strong>Dica do cadeado:</strong> O 1º dígito é o <strong>número de letras do nome da pessoa culpada</strong>, seguido pelos <strong>dois primeiros dígitos da hora em que o zelador passou no corredor</strong> (14h10 → 14).
+                        </p>
+                        <input id="answer-pin" type="text" inputmode="numeric" maxlength="3" placeholder="000" class="w-full sm:w-48 text-center bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-xl px-4 py-3 font-mono text-xl font-bold tracking-[0.4em] text-amber-400 outline-none transition">
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-zinc-800">
+                    <button onclick="goToStage(3)" class="text-zinc-400 hover:text-white text-sm px-4 py-2 rounded-xl transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Voltar às Pistas
+                    </button>
+                    <button onclick="verifyVerdict()" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-extrabold px-8 py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-unlock-keyhole"></i>
+                        <span>Abrir Cadeado e Concluir Caso</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- ETAPA 5: CONCLUSÃO (CASO ENCERRADO)        -->
+        <!-- ========================================== -->
+        <section id="stage-5" class="hidden space-y-6">
+            <div class="glass-card rounded-3xl overflow-hidden shadow-2xl border border-amber-500/40">
+                <div class="bg-gradient-to-b from-amber-500/20 via-zinc-900 to-zinc-950 p-8 text-center space-y-4">
+                    <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-400 text-4xl shadow-lg shadow-amber-500/20">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <span class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs font-bold">
+                        CASO SOLUCIONADO COM SUCESSO!
+                    </span>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold text-white">Parabéns, <span id="final-team-name" class="text-amber-400">Detetives</span>!</h2>
+                    <p class="text-zinc-300 text-sm sm:text-base max-w-xl mx-auto">
+                        Vocês destrancaram o armário #128 com a senha <strong class="font-mono text-amber-400">614</strong> e recuperaram o Troféu de Ouro antes do início da cerimônia!
+                    </p>
+
+                    <!-- Resumo de Desempenho -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto pt-4">
+                        <div class="bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-2xl">
+                            <span class="text-[11px] font-mono text-zinc-400 block">TEMPO TOTAL</span>
+                            <span id="final-time" class="text-lg font-mono font-bold text-white">00:00</span>
+                        </div>
+                        <div class="bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-2xl">
+                            <span class="text-[11px] font-mono text-zinc-400 block">PONTUAÇÃO</span>
+                            <span id="final-score" class="text-lg font-mono font-bold text-amber-400">1000 pts</span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 bg-zinc-900/90 border border-zinc-800 p-3.5 rounded-2xl">
+                            <span class="text-[11px] font-mono text-zinc-400 block">PATENTE</span>
+                            <span id="final-rank" class="text-sm font-bold text-emerald-400">Mestre Sherlock</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explicação Lógica do Caso -->
+                <div class="p-6 sm:p-8 bg-zinc-950/60 border-t border-zinc-800 space-y-4">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines text-amber-400"></i>
+                        <span>Dossiê Final da Resolução:</span>
+                    </h3>
+                    <ul class="space-y-2.5 text-xs sm:text-sm text-zinc-300">
+                        <li class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                            <span><strong>A Culpada:</strong> <strong>Camila</strong> afirmou estar treinando na quadra coberta das 13h50 às 14h45, mas o registro da portaria provou que a quadra estava trancada para pintura das 13h30 às 15h00.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                            <span><strong>O Bilhete:</strong> Subtraindo 3 de <code class="text-amber-300">11 - 14 - 16 - 12 - 4</code> obtém-se <code class="text-amber-300">8 - 11 - 13 - 9 - 1</code>, que corresponde às letras <strong>H - K - M - I - A</strong>.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-check text-emerald-400 mt-1"></i>
+                            <span><strong>A Senha (614):</strong> <strong>6</strong> letras no nome C-A-M-I-L-A + <strong>14</strong> da hora em que Bruno passou pelo corredor (14h10).</span>
+                        </li>
+                    </ul>
+
+                    <div class="pt-4 flex flex-wrap justify-center gap-3">
+                        <button onclick="resetGame()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition flex items-center gap-2">
+                            <i class="fa-solid fa-rotate-right"></i>
+                            <span>Jogar Novamente</span>
+                        </button>
+                        <button onclick="openQrModal()" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-sm px-5 py-2.5 rounded-xl transition flex items-center gap-2">
+                            <i class="fa-solid fa-qrcode"></i>
+                            <span>Gerar QR Code para os Amigos</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- MODAL DO GERADOR DE QR CODE                -->
+    <!-- ========================================== -->
+    <div id="qr-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <h3 class="font-bold text-white text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-amber-400"></i>
+                    <span>QR Code da WebQuest</span>
+                </h3>
+                <button onclick="closeQrModal()" class="text-zinc-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-zinc-300 leading-relaxed">
+                Cole abaixo o <strong>link onde você hospedar este jogo</strong> (ex: Google Sites, GitHub Pages, Vercel ou Tiiny.host) para gerar na hora o QR Code que seus amigos vão escanear para entrar!
+            </p>
+
+            <div class="space-y-2">
+                <label class="text-[11px] font-mono text-zinc-400 block">LINK DO JOGO PARA O QR CODE:</label>
+                <div class="flex gap-2">
+                    <input id="qr-url-input" type="url" placeholder="https://seu-jogo-detetive.netlify.app" class="flex-1 bg-zinc-950 border border-zinc-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                    <button onclick="generateCustomQR()" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl transition">
+                        Gerar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Área onde o QR Code é renderizado -->
+            <div class="bg-white p-5 rounded-2xl flex flex-col items-center justify-center">
+                <div id="qrcode-container"></div>
+                <span class="text-[11px] font-mono text-zinc-600 mt-3 font-bold">ESCANEIE PARA INICIAR A INVESTIGAÇÃO</span>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button onclick="downloadQRImage()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Baixar Imagem do QR Code (PNG)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado Global do Jogo
+        let currentStage = 1;
+        let score = 1000;
+        let secondsElapsed = 0;
+        let timerInterval = null;
+        let selectedSuspect = null;
+        let qrInstance = null;
+
+        // Inicia o cronômetro assim que a página carrega
+        window.onload = function() {
+            startTimer();
+            initDefaultQR();
+        };
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                document.getElementById('timer-display').textContent = formatTime(secondsElapsed);
+            }, 1000);
+        }
+
+        function formatTime(totalSeconds) {
+            const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const secs = String(totalSeconds % 60).padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        function showToast(message, type = 'info') {
+            const box = document.getElementById('toast-box');
+            const content = document.getElementById('toast-content');
+            box.classList.remove('hidden');
+
+            if (type === 'error') {
+                content.className = 'px-4 py-3 rounded-2xl shadow-2xl border text-sm font-medium flex items-center gap-3 bg-rose-950/95 border-rose-500/50 text-rose-200';
+                content.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-400 text-lg"></i><span>${message}</span>`;
+            } else if (type === 'success') {
+                content.className = 'px-4 py-3 rounded-2xl shadow-2xl border text-sm font-medium flex items-center gap-3 bg-emerald-950/95 border-emerald-500/50 text-emerald-200';
+                content.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i><span>${message}</span>`;
+            } else {
+                content.className = 'px-4 py-3 rounded-2xl shadow-2xl border text-sm font-medium flex items-center gap-3 bg-zinc-900/95 border-amber-500/50 text-amber-200';
+                content.innerHTML = `<i class="fa-solid fa-magnifying-glass text-amber-400 text-lg"></i><span>${message}</span>`;
+            }
+
+            clearTimeout(window.toastTimeout);
+            window.toastTimeout = setTimeout(() => {
+                box.classList.add('hidden');
+            }, 3800);
+        }
+
+        function startMission() {
+            const teamInput = document.getElementById('team-name-input').value.trim();
+            if (teamInput) {
+                document.getElementById('final-team-name').textContent = teamInput;
+            }
+            goToStage(2);
+            showToast('Investigação iniciada! Analise os depoimentos com cuidado.');
+        }
+
+        function goToStage(stageNum) {
+            currentStage = stageNum;
+            for (let i = 1; i <= 5; i++) {
+                const section = document.getElementById(`stage-${i}`);
+                const pill = document.getElementById(`step-pill-${i}`);
+                if (i === stageNum) {
+                    section.classList.remove('hidden');
+                    pill.className = 'py-1 rounded-lg bg-amber-500 text-zinc-950 font-bold transition-all';
+                } else {
+                    section.classList.add('hidden');
+                    if (i < stageNum) {
+                        pill.className = 'py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all';
+                    } else {
+                        pill.className = 'py-1 rounded-lg bg-zinc-800 text-zinc-400 transition-all';
+                    }
+                }
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Atualiza automaticamente o campo do veredito se o jogador preencher a bancada de decodificação
+        function updateDecodedPreview() {
+            const letters = [1, 2, 3, 4, 5]
+                .map(n => document.getElementById(`dec-${n}`).value.trim().toUpperCase())
+                .join('');
+            if (letters.length === 5) {
+                document.getElementById('answer-code').value = letters;
+                if (letters === 'HKMIA') {
+                    showToast('Código decifrado com sucesso: H-K-M-I-A!', 'success');
+                }
+            }
+        }
+
+        function selectSuspect(name) {
+            selectedSuspect = name;
+            document.querySelectorAll('.suspect-choice').forEach(btn => {
+                btn.classList.remove('border-amber-500', 'bg-amber-500/20', 'text-amber-300');
+                btn.classList.add('border-zinc-700', 'bg-zinc-950', 'text-zinc-300');
+            });
+            const activeBtn = document.getElementById(`btn-suspect-${name}`);
+            activeBtn.classList.remove('border-zinc-700', 'bg-zinc-950', 'text-zinc-300');
+            activeBtn.classList.add('border-amber-500', 'bg-amber-500/20', 'text-amber-300');
+        }
+
+        function penalizeScore(points) {
+            score = Math.max(100, score - points);
+            document.getElementById('score-display').textContent = `${score} pts`;
+        }
+
+        function verifyVerdict() {
+            const rawCode = document.getElementById('answer-code').value.toUpperCase().replace(/[^A-Z]/g, '');
+            const rawPin = document.getElementById('answer-pin').value.trim();
+
+            if (!selectedSuspect) {
+                showToast('Selecione quem você acha que mentiu no depoimento!', 'error');
+                return;
+            }
+            if (selectedSuspect !== 'Camila') {
+                penalizeScore(100);
+                showToast(`Suspeito incorreto! Releia o álibi de ${selectedSuspect} e compare com o relatório da perícia (-100 pts).`, 'error');
+                return;
+            }
+            if (rawCode !== 'HKMIA') {
+                penalizeScore(100);
+                showToast('Código do bilhete incorreto! Subtraia 3 de cada número: 11, 14, 16, 12, 4 (-100 pts).', 'error');
+                return;
+            }
+            if (rawPin !== '614') {
+                penalizeScore(100);
+                showToast('Senha do cadeado incorreta! Conte as letras de CAMILA + a hora do zelador (-100 pts).', 'error');
+                return;
+            }
+
+            // Vitória!
+            clearInterval(timerInterval);
+            document.getElementById('final-time').textContent = formatTime(secondsElapsed);
+            document.getElementById('final-score').textContent = `${score} pts`;
+
+            let rank = 'Detetive Iniciante';
+            if (score >= 900) rank = 'Mestre Sherlock';
+            else if (score >= 700) rank = 'Inspetor Chefe';
+            document.getElementById('final-rank').textContent = rank;
+
+            goToStage(5);
+            showToast('Cadeado aberto! Caso encerrado com sucesso!', 'success');
+        }
+
+        function resetGame() {
+            score = 1000;
+            secondsElapsed = 0;
+            selectedSuspect = null;
+            document.getElementById('score-display').textContent = '1000 pts';
+            document.getElementById('timer-display').textContent = '00:00';
+            document.getElementById('answer-code').value = '';
+            document.getElementById('answer-pin').value = '';
+            [1, 2, 3, 4, 5].forEach(n => document.getElementById(`dec-${n}`).value = '');
+            document.querySelectorAll('.suspect-choice').forEach(btn => {
+                btn.classList.remove('border-amber-500', 'bg-amber-500/20', 'text-amber-300');
+                btn.classList.add('border-zinc-700', 'bg-zinc-950', 'text-zinc-300');
+            });
+            startTimer();
+            goToStage(1);
+        }
+
+        // ==========================================
+        // GERADOR DE QR CODE INTEGRADO
+        // ==========================================
+        function initDefaultQR() {
+            const currentUrl = window.location.href.startsWith('http')
+                ? window.location.href
+                : 'https://clube-investigacao-webquest.app';
+            document.getElementById('qr-url-input').value = currentUrl;
+            renderQR(currentUrl);
+        }
+
+        function renderQR(urlText) {
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = '';
+            qrInstance = new QRCode(container, {
+                text: urlText,
+                width: 210,
+                height: 210,
+                colorDark: '#09090b',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function generateCustomQR() {
+            const urlVal = document.getElementById('qr-url-input').value.trim();
+            if (!urlVal) {
+                showToast('Cole um link válido antes de gerar o QR Code.', 'error');
+                return;
+            }
+            renderQR(urlVal);
+            showToast('QR Code atualizado com seu link!', 'success');
+        }
+
+        function openQrModal() {
+            document.getElementById('qr-modal').classList.remove('hidden');
+        }
+
+        function closeQrModal() {
+            document.getElementById('qr-modal').classList.add('hidden');
+        }
+
+        function downloadQRImage() {
+            const canvas = document.querySelector('#qrcode-container canvas');
+            const img = document.querySelector('#qrcode-container img');
+            let dataUrl = '';
+
+            if (canvas) {
+                dataUrl = canvas.toDataURL('image/png');
+            } else if (img && img.src) {
+                dataUrl = img.src;
+            }
+
+            if (dataUrl) {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = 'QRCode_WebQuest_Clube.png';
+                link.click();
+                showToast('Imagem do QR Code baixada!', 'success');
+            }
+        }
+    </script>
+</body>
+</html>
